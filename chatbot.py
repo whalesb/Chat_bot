@@ -6,8 +6,8 @@ VAPI_PRIVATE_KEY = "56039554-5828-4a5f-a307-e181477104ea"  # Replace with your p
 ASSISTANT_ID = "d5e70420-ed24-423c-96b7-94bdc9b4fd31"  # Replace with your assistant ID
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="Vapi Text Chat_bot", page_icon="🤖")
-st.title("💬 Vapi Text Chatbot (Python + Streamlit)")
+st.set_page_config(page_title="Vapi Text Chatbot", page_icon="🤖")
+st.title("💬 Vapi Text Chat_bot (Python + Streamlit)")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
