@@ -3,7 +3,7 @@ import requests
 
 # --- Configuration (Use Streamlit Secrets) ---
 VAPI_PRIVATE_KEY = st.secrets["VAPI_PRIVATE_KEY"]
-ASSISTANT_ID = st.secrets["ASSISTANT_ID"]
+ASSISTANT_ID     = st.secrets["ASSISTANT_ID"]
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Vapi Text Chatbot", page_icon="🤖")
@@ -29,15 +29,18 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # --- Call Vapi Chat API ---
-    api_url = "https://api.vapi.ai/chat" if st.session_state.chat_id else "https://api.vapi.ai/chat/create"
+    # --- Call Vapi Chat API via /chats endpoint ---
+    api_url = "https://api.vapi.ai/chats"
     headers = {
         "Authorization": f"Bearer {VAPI_PRIVATE_KEY}",
         "Content-Type": "application/json"
     }
+    # Build payload: include existing chat_id when present
     payload = {
         "assistantId": ASSISTANT_ID,
-        "message": {"role": "user", "content": user_input}
+        "messages": [
+            {"role": "user", "content": user_input}
+        ]
     }
     if st.session_state.chat_id:
         payload["chatId"] = st.session_state.chat_id
@@ -48,9 +51,12 @@ if user_input:
             data = response.json()
 
             if response.status_code == 200:
-                if not st.session_state.chat_id and "id" in data:
-                    st.session_state.chat_id = data["id"]  # Store chat ID for continuity
-                bot_reply = data.get("message", {}).get("content", "(No response)")
+                # On first call, capture chat ID
+                if not st.session_state.chat_id and data.get("id"):
+                    st.session_state.chat_id = data["id"]
+                # Last message in returned array is the assistant reply
+                messages = data.get("messages", [])
+                bot_reply = messages[-1].get("content", "(No response)") if messages else "(No response)"
             else:
                 bot_reply = f"Error {response.status_code}: {response.text}"
     except Exception as e:
