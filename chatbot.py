@@ -29,21 +29,18 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # --- Call Vapi Chat API via /chats endpoint ---
-    api_url = "https://api.vapi.ai/chats"
+    # --- Call Vapi Chat API via /chat endpoint ---
+    api_url = "https://api.vapi.ai/chat"
     headers = {
         "Authorization": f"Bearer {VAPI_PRIVATE_KEY}",
         "Content-Type": "application/json"
     }
-    # Build payload: include existing chat_id when present
     payload = {
         "assistantId": ASSISTANT_ID,
-        "messages": [
-            {"role": "user", "content": user_input}
-        ]
+        "input": user_input
     }
     if st.session_state.chat_id:
-        payload["chatId"] = st.session_state.chat_id
+        payload["previousChatId"] = st.session_state.chat_id
 
     try:
         with st.spinner("Assistant is thinking..."):
@@ -51,12 +48,12 @@ if user_input:
             data = response.json()
 
             if response.status_code == 200:
-                # On first call, capture chat ID
+                # Capture chat ID on first response
                 if not st.session_state.chat_id and data.get("id"):
                     st.session_state.chat_id = data["id"]
-                # Last message in returned array is the assistant reply
-                messages = data.get("messages", [])
-                bot_reply = messages[-1].get("content", "(No response)") if messages else "(No response)"
+                # Assistant responses are in 'output'
+                outputs = data.get("output", [])
+                bot_reply = outputs[-1].get("content", "(No response)") if outputs else "(No response)"
             else:
                 bot_reply = f"Error {response.status_code}: {response.text}"
     except Exception as e:
