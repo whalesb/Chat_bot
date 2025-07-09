@@ -1,25 +1,24 @@
 import streamlit as st
 import requests
 
-# --- Configuration ---
-VAPI_PRIVATE_KEY = "56039554-5828-4a5f-a307-e181477104ea"  # Replace with your private API key
-ASSISTANT_ID = "d5e70420-ed24-423c-96b7-94bdc9b4fd31"  # Replace with your assistant ID
+# --- Configuration (Use Streamlit Secrets) ---
+VAPI_PRIVATE_KEY = st.secrets["VAPI_PRIVATE_KEY"]
+ASSISTANT_ID = st.secrets["ASSISTANT_ID"]
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Vapi Text Chatbot", page_icon="🤖")
-st.title("💬 Vapi Text Chat_bot (Python + Streamlit)")
+st.title("💬 Vapi Text Chatbot (Python + Streamlit)")
 
+# Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "chat_id" not in st.session_state:
+    st.session_state.chat_id = None
 
 # Display previous messages
 for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        with st.chat_message("user"):
-            st.markdown(msg["content"])
-    else:
-        with st.chat_message("assistant"):
-            st.markdown(msg["content"])
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
 # Input box
 user_input = st.chat_input("Say something...")
@@ -30,22 +29,32 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # --- Call Vapi API ---
-    api_url = f"https://api.vapi.ai/assistant/{ASSISTANT_ID}/text"
+    # --- Call Vapi Chat API ---
+    api_url = "https://api.vapi.ai/chat" if st.session_state.chat_id else "https://api.vapi.ai/chat/create"
     headers = {
         "Authorization": f"Bearer {VAPI_PRIVATE_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {"text": user_input}
+    payload = {
+        "assistantId": ASSISTANT_ID,
+        "message": {"role": "user", "content": user_input}
+    }
+    if st.session_state.chat_id:
+        payload["chatId"] = st.session_state.chat_id
 
     try:
-        response = requests.post(api_url, json=payload, headers=headers)
-        if response.status_code == 200:
-            bot_reply = response.json().get("text", "(No response from assistant)")
-        else:
-            bot_reply = f"(Error {response.status_code}: {response.text})"
+        with st.spinner("Assistant is thinking..."):
+            response = requests.post(api_url, json=payload, headers=headers)
+            data = response.json()
+
+            if response.status_code == 200:
+                if not st.session_state.chat_id and "id" in data:
+                    st.session_state.chat_id = data["id"]  # Store chat ID for continuity
+                bot_reply = data.get("message", {}).get("content", "(No response)")
+            else:
+                bot_reply = f"Error {response.status_code}: {response.text}"
     except Exception as e:
-        bot_reply = f"(Connection error: {str(e)})"
+        bot_reply = f"Connection error: {str(e)}"
 
     # Display assistant message
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
